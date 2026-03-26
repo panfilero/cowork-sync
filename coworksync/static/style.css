@@ -1,0 +1,287 @@
+/* CoworkSync — minimal config UI */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: #fff;
+    color: #1a1a1a;
+    line-height: 1.5;
+    padding: 0;
+}
+
+.container {
+    max-width: 520px;
+    margin: 0 auto;
+    padding: 32px 28px;
+}
+
+header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+header h1 {
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.version {
+    font-size: 13px;
+    color: #888;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #e0e0e0;
+    margin: 20px 0;
+}
+
+/* Message bar */
+.message {
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+.message.hidden {
+    display: none;
+}
+
+.message.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+}
+
+.message.error {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+}
+
+.message.warning {
+    background: #fff8e1;
+    color: #f57f17;
+    border: 1px solid #ffe082;
+}
+
+/* Config form */
+.config-section label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: #555;
+    margin-bottom: 4px;
+    margin-top: 14px;
+}
+
+.config-section label:first-child {
+    margin-top: 0;
+}
+
+.folder-row {
+    display: flex;
+    gap: 8px;
+}
+
+.folder-row input[type="text"] {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.folder-row input[type="text"]:focus {
+    border-color: #1976d2;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.15);
+}
+
+.interval-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.interval-row label {
+    margin: 0 !important;
+    min-width: 95px;
+}
+
+.interval-row input[type="number"] {
+    width: 64px;
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    text-align: center;
+}
+
+.interval-row input[type="number"]:focus {
+    border-color: #1976d2;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.15);
+}
+
+.interval-row span {
+    font-size: 14px;
+    color: #555;
+}
+
+.checkbox-label {
+    display: flex !important;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px !important;
+    color: #1a1a1a !important;
+    cursor: pointer;
+    margin-top: 16px !important;
+}
+
+.checkbox-label input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #1976d2;
+}
+
+/* Status */
+.status-section {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.status-row .label {
+    min-width: 95px;
+    color: #555;
+    font-weight: 500;
+}
+
+.status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    background: #9e9e9e;
+}
+
+.status-dot.green  { background: #4caf50; }
+.status-dot.yellow { background: #ffc107; }
+.status-dot.red    { background: #f44336; }
+.status-dot.gray   { background: #9e9e9e; }
+
+/* Buttons */
+.button-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 9px 20px;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.btn:hover {
+    opacity: 0.9;
+}
+
+.btn-primary {
+    background: #1976d2;
+    color: #fff;
+}
+
+.btn-secondary {
+    background: #e0e0e0;
+    color: #333;
+}
+
+.btn-secondary:hover {
+    background: #d0d0d0;
+}
+
+/* Activity log */
+.log-section h2 {
+    font-size: 15px;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.activity-log {
+    font-size: 13px;
+    font-family: "Consolas", "Courier New", monospace;
+    max-height: 260px;
+    overflow-y: auto;
+    border: 1px solid #e8e8e8;
+    border-radius: 6px;
+    padding: 8px 12px;
+    background: #fafafa;
+}
+
+.log-entry {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.log-entry:last-child {
+    border-bottom: none;
+}
+
+.log-entry .log-time {
+    color: #888;
+    min-width: 42px;
+}
+
+.log-entry .log-action {
+    min-width: 65px;
+    font-weight: 500;
+}
+
+.log-entry .log-file {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.log-entry .log-dir {
+    color: #888;
+    min-width: 30px;
+    text-align: right;
+}
+
+.log-entry.error .log-action { color: #f44336; }
+.log-entry.conflict .log-action { color: #ff9800; }
+
+.log-empty {
+    color: #999;
+    text-align: center;
+    padding: 16px 0;
+}

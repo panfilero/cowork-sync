@@ -1,0 +1,6 @@
+watchdog
+pystray
+Pillow
+schedule
+flask
+pyinstaller

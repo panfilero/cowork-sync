@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m coworksync.generate_icons)",
+      "Bash(python coworksync/generate_icons.py)",
+      "Bash(pip install:*)",
+      "Bash(python -c \"from coworksync.config import load_config; from coworksync.logger import logger; from coworksync.sync_engine import SyncEngine; from coworksync.server import app; print\\(''All imports OK''\\)\")",
+      "Bash(python -c \"from coworksync.tray import TrayApp; print\\(''Tray import OK''\\)\")"
+    ]
+  }
+}

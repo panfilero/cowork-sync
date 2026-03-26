@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CoworkSync</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>CoworkSync</h1>
+            <span class="version">v1.0</span>
+        </header>
+        <hr>
+
+        <div id="message" class="message hidden"></div>
+
+        <section class="config-section">
+            <label for="source_folder">Source Folder</label>
+            <div class="folder-row">
+                <input type="text" id="source_folder" placeholder="H:\My Drive\Project Folder">
+            </div>
+
+            <label for="local_folder">Local Folder</label>
+            <div class="folder-row">
+                <input type="text" id="local_folder" placeholder="C:\Users\Username\Project">
+            </div>
+
+            <div class="interval-row">
+                <label for="sync_interval">Sync Interval</label>
+                <input type="number" id="sync_interval" min="1" max="60" value="5">
+                <span>minutes</span>
+            </div>
+
+            <label class="checkbox-label">
+                <input type="checkbox" id="start_with_windows" checked>
+                Start with Windows
+            </label>
+        </section>
+
+        <hr>
+
+        <section class="status-section">
+            <div class="status-row">
+                <span class="label">Status</span>
+                <span class="status-dot" id="status-dot"></span>
+                <span id="status-text">Loading...</span>
+            </div>
+            <div class="status-row">
+                <span class="label">Last sync</span>
+                <span id="last-sync">—</span>
+            </div>
+            <div class="status-row">
+                <span class="label">Next poll</span>
+                <span id="next-poll">—</span>
+            </div>
+            <div class="status-row">
+                <span class="label">Synced today</span>
+                <span id="files-today">0 files</span>
+            </div>
+        </section>
+
+        <div class="button-row">
+            <button id="btn-save" class="btn btn-primary">Save &amp; Start</button>
+            <button id="btn-stop" class="btn btn-secondary">Stop</button>
+            <button id="btn-sync" class="btn btn-secondary">Sync Now</button>
+        </div>
+
+        <hr>
+
+        <section class="log-section">
+            <h2>Recent Activity</h2>
+            <div id="activity-log" class="activity-log">
+                <div class="log-empty">No recent activity</div>
+            </div>
+        </section>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
