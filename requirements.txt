@@ -2,5 +2,5 @@ watchdog
 pystray
 Pillow
 schedule
-flask
+customtkinter
 pyinstaller

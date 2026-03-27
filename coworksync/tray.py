@@ -2,7 +2,6 @@
 
 import os
 import sys
-import webbrowser
 import subprocess
 import threading
 
@@ -10,6 +9,7 @@ import pystray
 from PIL import Image
 
 from coworksync.logger import LOG_FILE
+from coworksync import ui
 
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
@@ -27,9 +27,8 @@ def _load_icon(name):
 class TrayApp:
     """Manages the system tray icon and menu."""
 
-    def __init__(self, engine, port=5420):
+    def __init__(self, engine):
         self.engine = engine
-        self.port = port
         self._icon = None
         self._icons = {}
 
@@ -65,7 +64,7 @@ class TrayApp:
         self.engine.sync_now()
 
     def _on_open_config(self, icon, item):
-        webbrowser.open(f"http://localhost:{self.port}")
+        ui.open_window_threaded()
 
     def _on_view_log(self, icon, item):
         if os.path.exists(LOG_FILE):

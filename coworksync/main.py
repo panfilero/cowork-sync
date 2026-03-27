@@ -1,13 +1,12 @@
-"""CoworkSync — entry point. Initializes tray, web server, and sync engine."""
+"""CoworkSync — entry point. Initializes tray, sync engine, and UI."""
 
 import sys
-import threading
 
 from coworksync.config import load_config, is_configured
 from coworksync.sync_engine import SyncEngine
-from coworksync.server import start_server
 from coworksync.tray import TrayApp
 from coworksync.logger import logger
+from coworksync import ui
 
 
 def main():
@@ -16,9 +15,8 @@ def main():
     # Create sync engine
     engine = SyncEngine()
 
-    # Start Flask web server
-    port = start_server(engine, port=5420)
-    logger.info("Web UI available at http://localhost:%d", port)
+    # Wire the UI to the engine
+    ui.set_engine(engine)
 
     # Load config and auto-start sync if configured
     cfg = load_config()
@@ -26,13 +24,11 @@ def main():
         engine.configure(cfg)
         engine.start()
     else:
-        logger.info("No config found — open the web UI to configure.")
-        # Open browser on first run
-        import webbrowser
-        threading.Timer(1.5, lambda: webbrowser.open(f"http://localhost:{port}")).start()
+        logger.info("No config found — open the tray menu to configure.")
+        ui.open_window_threaded()
 
     # Run system tray (blocking — runs the Windows message loop)
-    tray = TrayApp(engine, port=port)
+    tray = TrayApp(engine)
     try:
         tray.run()
     except KeyboardInterrupt:
