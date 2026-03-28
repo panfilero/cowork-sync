@@ -9,6 +9,18 @@ from coworksync.logger import logger
 from coworksync import ui
 
 
+def main_ui_only():
+    """Open just the CustomTkinter config window, bypassing the tray."""
+    engine = SyncEngine()
+    ui.set_engine(engine)
+    cfg = load_config()
+    if is_configured(cfg):
+        engine.configure(cfg)
+        engine.start()
+    ui.open_window()
+    engine.stop()
+
+
 def main():
     logger.info("CoworkSync starting up.")
 
@@ -39,4 +51,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if "--ui-only" in sys.argv:
+        main_ui_only()
+    else:
+        main()
