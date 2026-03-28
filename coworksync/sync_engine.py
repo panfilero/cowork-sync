@@ -1,7 +1,9 @@
 """Core sync logic — watchdog observer, debounced events, fallback polling, state DB."""
 
 import os
+import sys
 import shutil
+import ctypes
 import time
 import threading
 from datetime import datetime
@@ -50,9 +52,23 @@ def delete_path(path):
 
 
 def copy_file(src, dst):
-    """Copy a file, creating parent dirs as needed."""
+    """Copy a file via Win32 CopyFileExW so minifilter drivers (e.g. Google Drive)
+    register the operation. Falls back to shutil.copy2 on non-Windows."""
     os.makedirs(os.path.dirname(dst), exist_ok=True)
-    shutil.copy2(src, dst)
+    if sys.platform == "win32":
+        ok = ctypes.windll.kernel32.CopyFileExW(
+            ctypes.c_wchar_p(src),
+            ctypes.c_wchar_p(dst),
+            None,   # progress callback
+            None,   # callback data
+            ctypes.c_bool(False),  # cancel flag
+            0,      # flags
+        )
+        if not ok:
+            err = ctypes.GetLastError()
+            raise OSError(err, ctypes.FormatError(err), src)
+    else:
+        shutil.copy2(src, dst)
 
 
 # --- Sync Engine ---

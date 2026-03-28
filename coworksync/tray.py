@@ -13,9 +13,9 @@ from coworksync import ui
 
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 
-# When bundled with PyInstaller, assets are in _MEIPASS
+# When bundled with PyInstaller, assets are extracted to _MEIPASS/coworksync/assets
 if getattr(sys, "frozen", False):
-    ASSETS_DIR = os.path.join(sys._MEIPASS, "assets")
+    ASSETS_DIR = os.path.join(sys._MEIPASS, "coworksync", "assets")
 
 
 def _load_icon(name):

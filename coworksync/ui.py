@@ -9,7 +9,7 @@ import customtkinter
 
 from coworksync.config import (
     load_config, save_config, validate_source, validate_local,
-    warn_local, set_startup, get_startup_enabled,
+    warn_local, set_startup, get_startup_enabled, save_state,
 )
 from coworksync.logger import LOG_FILE
 
@@ -76,6 +76,13 @@ class ConfigWindow(customtkinter.CTk):
         self.local_entry.pack(side="left", fill="x", expand=True)
         customtkinter.CTkButton(local_row, text="Browse", width=70, command=self._browse_local).pack(side="right", padx=(5, 0))
 
+        customtkinter.CTkLabel(
+            config_frame,
+            text="Changing paths will stop sync. You must restart manually.",
+            text_color="gray",
+            font=("", 11),
+        ).pack(anchor="w", padx=10, pady=(0, 8))
+
         customtkinter.CTkLabel(config_frame, text="Sync Interval (minutes)").pack(anchor="w", padx=10, pady=(5, 0))
         self.interval_entry = customtkinter.CTkEntry(config_frame, width=80)
         self.interval_entry.pack(anchor="w", padx=10, pady=(2, 5))
@@ -103,7 +110,7 @@ class ConfigWindow(customtkinter.CTk):
         btn_frame = customtkinter.CTkFrame(self, fg_color="transparent")
         btn_frame.pack(fill="x", padx=15, pady=5)
 
-        self.save_btn = customtkinter.CTkButton(btn_frame, text="Save & Start", command=self._on_save_start)
+        self.save_btn = customtkinter.CTkButton(btn_frame, text="Save", command=self._on_save)
         self.save_btn.pack(side="left", expand=True, padx=(0, 5))
 
         self.toggle_btn = customtkinter.CTkButton(btn_frame, text="Stop", command=self._on_toggle)
@@ -124,8 +131,10 @@ class ConfigWindow(customtkinter.CTk):
 
     def _load_current_config(self):
         cfg = load_config()
-        self.source_entry.insert(0, cfg.get("source_folder", ""))
-        self.local_entry.insert(0, cfg.get("local_folder", ""))
+        self._saved_source = cfg.get("source_folder", "")
+        self._saved_local = cfg.get("local_folder", "")
+        self.source_entry.insert(0, self._saved_source)
+        self.local_entry.insert(0, self._saved_local)
         self.interval_entry.insert(0, str(cfg.get("sync_interval", 5)))
         self.startup_var.set(get_startup_enabled())
 
@@ -134,14 +143,27 @@ class ConfigWindow(customtkinter.CTk):
         if path:
             self.source_entry.delete(0, "end")
             self.source_entry.insert(0, path)
+            self._on_path_changed()
 
     def _browse_local(self):
         path = filedialog.askdirectory(title="Select Local Folder")
         if path:
             self.local_entry.delete(0, "end")
             self.local_entry.insert(0, path)
+            self._on_path_changed()
 
-    def _on_save_start(self):
+    def _on_path_changed(self):
+        """Stop sync and clear state when either folder path is changed."""
+        new_source = self.source_entry.get().strip()
+        new_local = self.local_entry.get().strip()
+        if new_source == self._saved_source and new_local == self._saved_local:
+            return
+        if _engine and _engine.running:
+            _engine.stop()
+        save_state({})
+        self._update_status_display()
+
+    def _on_save(self):
         source = self.source_entry.get().strip()
         local = self.local_entry.get().strip()
 
@@ -171,16 +193,17 @@ class ConfigWindow(customtkinter.CTk):
         exe = sys.executable
         set_startup(self.startup_var.get(), exe)
 
+        self._saved_source = source
+        self._saved_local = local
+
+        if _engine:
+            _engine.configure(cfg)
+
         warning = warn_local(local)
         if warning:
             self.message_label.configure(text=warning, text_color="orange")
         else:
             self.message_label.configure(text="Config saved.", text_color="green")
-
-        if _engine:
-            _engine.configure(cfg)
-            if not _engine.running:
-                _engine.start()
 
     def _on_toggle(self):
         if not _engine:
