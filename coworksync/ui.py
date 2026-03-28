@@ -114,7 +114,10 @@ class ConfigWindow(customtkinter.CTk):
         self.save_btn.pack(side="left", expand=True, padx=(0, 5))
 
         self.toggle_btn = customtkinter.CTkButton(btn_frame, text="Stop", command=self._on_toggle)
-        self.toggle_btn.pack(side="left", expand=True, padx=(5, 0))
+        self.toggle_btn.pack(side="left", expand=True, padx=(5, 5))
+
+        self.sync_now_btn = customtkinter.CTkButton(btn_frame, text="Sync Now", command=self._on_sync_now, state="disabled")
+        self.sync_now_btn.pack(side="left", expand=True, padx=(5, 0))
 
         # --- Error/warning label ---
         self.message_label = customtkinter.CTkLabel(self, text="", text_color="red")
@@ -214,6 +217,11 @@ class ConfigWindow(customtkinter.CTk):
             _engine.start()
         self._update_status_display()
 
+    def _on_sync_now(self):
+        if _engine:
+            _engine.sync_now()
+        self._update_status_display()
+
     def _refresh_status(self):
         """Auto-refresh status and log every 15 seconds."""
         self._update_status_display()
@@ -252,8 +260,10 @@ class ConfigWindow(customtkinter.CTk):
 
         if _engine.running:
             self.toggle_btn.configure(text="Stop")
+            self.sync_now_btn.configure(state="normal")
         else:
             self.toggle_btn.configure(text="Resume")
+            self.sync_now_btn.configure(state="disabled")
 
     def _update_log(self):
         if not _engine:

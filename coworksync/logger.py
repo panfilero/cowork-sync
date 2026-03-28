@@ -8,6 +8,12 @@ APP_DIR = os.path.join(os.environ.get("APPDATA", ""), "CoworkSync")
 LOG_FILE = os.path.join(APP_DIR, "coworksync.log")
 
 
+def enable_verbose():
+    """Switch the logger to DEBUG level (call before setup_logger if possible,
+    or after — it will update the existing logger in place)."""
+    logging.getLogger("coworksync").setLevel(logging.DEBUG)
+
+
 def setup_logger():
     """Configure and return the application logger."""
     os.makedirs(APP_DIR, exist_ok=True)

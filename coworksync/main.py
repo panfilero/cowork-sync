@@ -5,7 +5,7 @@ import sys
 from coworksync.config import load_config, is_configured
 from coworksync.sync_engine import SyncEngine
 from coworksync.tray import TrayApp
-from coworksync.logger import logger
+from coworksync.logger import logger, enable_verbose
 from coworksync import ui
 
 
@@ -22,6 +22,9 @@ def main_ui_only():
 
 
 def main():
+    if "--verbose" in sys.argv:
+        enable_verbose()
+        logger.debug("Verbose/debug logging enabled.")
     logger.info("CoworkSync starting up.")
 
     # Create sync engine

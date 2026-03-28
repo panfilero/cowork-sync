@@ -56,6 +56,7 @@ def copy_file(src, dst):
     register the operation. Falls back to shutil.copy2 on non-Windows."""
     os.makedirs(os.path.dirname(dst), exist_ok=True)
     if sys.platform == "win32":
+        logger.debug("copy_file: CopyFileExW %s -> %s", src, dst)
         ok = ctypes.windll.kernel32.CopyFileExW(
             ctypes.c_wchar_p(src),
             ctypes.c_wchar_p(dst),
@@ -67,8 +68,11 @@ def copy_file(src, dst):
         if not ok:
             err = ctypes.GetLastError()
             raise OSError(err, ctypes.FormatError(err), src)
+        logger.debug("copy_file: CopyFileExW succeeded %s", dst)
     else:
+        logger.debug("copy_file: shutil.copy2 %s -> %s", src, dst)
         shutil.copy2(src, dst)
+        logger.debug("copy_file: shutil.copy2 succeeded %s", dst)
 
 
 # --- Sync Engine ---
@@ -114,10 +118,18 @@ class SyncEngine:
         self.files_today += 1
 
     def configure(self, cfg):
-        """Apply config values."""
+        """Apply config values. Restarts poll timer if interval changed while running."""
         self.source = cfg.get("source_folder", "")
         self.local = cfg.get("local_folder", "")
-        self.interval = cfg.get("sync_interval", 5)
+        new_interval = cfg.get("sync_interval", 5)
+        interval_changed = new_interval != self.interval
+        self.interval = new_interval
+        if self.running and interval_changed:
+            if self.poll_timer:
+                self.poll_timer.cancel()
+                self.poll_timer = None
+            self._schedule_poll()
+            logger.info("Sync interval updated to %d min — poll rescheduled.", self.interval)
 
     def start(self):
         """Start the sync engine."""
@@ -172,6 +184,8 @@ class SyncEngine:
         """Trigger an immediate full sync."""
         if not self.running:
             return
+        logger.info("Manual sync triggered.")
+        self._add_activity("Manual sync", "triggered", "")
         threading.Thread(target=self._full_sync, daemon=True).start()
 
     # --- Watchdog ---
@@ -287,10 +301,19 @@ class SyncEngine:
                         # Both exist — sync newer
                         src_mtime = source_files[rel]["mtime"]
                         dst_mtime = local_files[rel]["mtime"]
-                        if abs(src_mtime - dst_mtime) <= 2.0:
+                        diff = src_mtime - dst_mtime
+                        if abs(diff) <= 2.0:
                             # Within FAT32 tolerance, treat as equal
+                            logger.debug(
+                                "SKIP   %s  (mtime equal: src=%.3f dst=%.3f diff=%.3f)",
+                                rel, src_mtime, dst_mtime, diff,
+                            )
                             current_files[rel] = source_files[rel]
                         elif src_mtime > dst_mtime:
+                            logger.debug(
+                                "COPY→L %s  (source newer: src=%.3f dst=%.3f diff=+%.3f)",
+                                rel, src_mtime, dst_mtime, diff,
+                            )
                             copy_file(src_path, dst_path)
                             logger.info("COPY   %s  (source newer)", rel)
                             self._add_activity("Copied", os.path.basename(rel), "\u2192 L")
@@ -298,6 +321,10 @@ class SyncEngine:
                             actions_taken += 1
                             current_files[rel] = source_files[rel]
                         else:
+                            logger.debug(
+                                "COPY→S %s  (local newer: src=%.3f dst=%.3f diff=%.3f)",
+                                rel, src_mtime, dst_mtime, diff,
+                            )
                             copy_file(dst_path, src_path)
                             logger.info("COPY   %s  (local newer)", rel)
                             self._add_activity("Copied", os.path.basename(rel), "\u2192 S")
@@ -308,6 +335,10 @@ class SyncEngine:
                     elif in_src and not in_dst:
                         if in_state:
                             # Was known, now gone from local → deleted locally
+                            logger.debug(
+                                "DEL←S  %s  (in_state=True, missing from local → delete source)",
+                                rel,
+                            )
                             delete_path(src_path)
                             logger.info("DELETE %s  (removed from local)", rel)
                             self._add_activity("Deleted", os.path.basename(rel), "x")
@@ -315,6 +346,10 @@ class SyncEngine:
                             actions_taken += 1
                         else:
                             # New in source → copy to local
+                            logger.debug(
+                                "COPY→L %s  (not in_state, only in source → copy to local)",
+                                rel,
+                            )
                             copy_file(src_path, dst_path)
                             logger.info("COPY   %s  (new in source)", rel)
                             self._add_activity("Copied", os.path.basename(rel), "\u2192 L")
@@ -325,6 +360,10 @@ class SyncEngine:
                     elif not in_src and in_dst:
                         if in_state:
                             # Was known, now gone from source → deleted at source
+                            logger.debug(
+                                "DEL←L  %s  (in_state=True, missing from source → delete local)",
+                                rel,
+                            )
                             delete_path(dst_path)
                             logger.info("DELETE %s  (removed from source)", rel)
                             self._add_activity("Deleted", os.path.basename(rel), "x")
@@ -332,6 +371,10 @@ class SyncEngine:
                             actions_taken += 1
                         else:
                             # New in local → copy to source
+                            logger.debug(
+                                "COPY→S %s  (not in_state, only in local → copy to source)",
+                                rel,
+                            )
                             copy_file(dst_path, src_path)
                             logger.info("COPY   %s  (new in local)", rel)
                             self._add_activity("Copied", os.path.basename(rel), "\u2192 S")
