@@ -7,7 +7,13 @@
       "Bash(python -c \"from coworksync.config import load_config; from coworksync.logger import logger; from coworksync.sync_engine import SyncEngine; from coworksync.server import app; print\\(''All imports OK''\\)\")",
       "Bash(python -c \"from coworksync.tray import TrayApp; print\\(''Tray import OK''\\)\")",
       "Bash(find /E/GitHub/coworksync -maxdepth 2 -name README* -o -name CLAUDE.md -o -name .cursorrules -o -name .cursor -type f)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(python3 -c \":*)",
+      "Bash(python -c \":*)",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''coworksync/sync_engine.py'', encoding=''utf-8''\\).read\\(\\)\\); print\\(''sync_engine.py OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''coworksync/ui.py'', encoding=''utf-8''\\).read\\(\\)\\); print\\(''ui.py OK''\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\(''coworksync/config.py'', encoding=''utf-8''\\).read\\(\\)\\); print\\(''config.py OK''\\)\")",
+      "Bash(python:*)"
     ]
   }
 }

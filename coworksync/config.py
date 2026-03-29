@@ -16,6 +16,7 @@ DEFAULT_CONFIG = {
     "local_folder": "",
     "sync_interval": 5,
     "start_with_windows": True,
+    "folder_rules": [{"path": "processing", "mode": "ignore"}],
 }
 
 

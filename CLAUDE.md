@@ -35,9 +35,9 @@ There is no test suite. Testing is done manually by running the application.
 **Entry point:** `coworksync/main.py` — creates SyncEngine, wires the UI engine reference, loads config, and runs the system tray (blocking). Opens the CustomTkinter config window on demand via tray or automatically on first run.
 
 **Core modules:**
-- `sync_engine.py` — Two-way sync using watchdog (real-time file events, debounced 2s) + fallback polling (default every 5 min). Conflict resolution is last-write-wins. Status states: `stopped` → `running` → `syncing` / `error`. Contains sync-loop suppression logic (see Key Design Decisions).
+- `sync_engine.py` — Two-way sync using watchdog (real-time file events, debounced 2s) + fallback polling (default every 5 min). Conflict resolution is last-write-wins. Status states: `stopped` → `running` → `syncing` / `error`. Contains sync-loop suppression logic (see Key Design Decisions). Contains `get_mode(rel_path)` for per-subfolder rule lookup. Watchdog events carry `side_name` and `mode` through the debounce chain to enforce one-way rules.
 - `config.py` — JSON config at `%APPDATA%\CoworkSync\config.json`, state DB at `state.json`, Windows registry integration for startup.
-- `ui.py` — CustomTkinter config window, opens via tray "Open Config". Singleton pattern (brings to front if already open). Auto-refreshes status and activity log every 15s via `after()` loop.
+- `ui.py` — CustomTkinter config window, opens via tray "Open Config". Singleton pattern (brings to front if already open). Auto-refreshes status and activity log every 15s via `after()` loop. Folder rules editor: existing rules display as read-only labels; "+ Add Rule" shows a dropdown of actual subfolders scanned from both configured paths (2 levels deep), excluding folders already assigned a rule.
 - `tray.py` — pystray system tray icon with color-coded status (green=running, yellow=syncing, red=error). Updates every 3s.
 - `logger.py` — Rotating file logger (5MB, 2 backups) at `%APPDATA%\CoworkSync\coworksync.log`. Exposes `enable_verbose()` to switch to DEBUG level.
 
@@ -47,7 +47,8 @@ There is no test suite. Testing is done manually by running the application.
 
 - **Dual sync:** Watchdog + polling for reliability across virtual file systems (Google Drive VFS).
 - **Direct deletion:** Uses `os.remove()`/`shutil.rmtree()` (never recycle bin) so cloud clients register changes.
-- **Excluded paths:** `processing/` folder, `thumbs.db`, `desktop.ini`, `.ds_store`, `*.tmp`, `*.ffs_db`, `*.ffs_lock`, `*.coworksync.tmp`.
+- **Per-subfolder sync rules:** Each subfolder can have an independent mode: `two-way` (default), `source-to-local`, `local-to-source`, or `ignore`. Rules are configured in `folder_rules` in `config.json`. The deepest matching rule wins. `processing/` defaults to `ignore`.
+- **File-level exclusions:** `thumbs.db`, `desktop.ini`, `.ds_store`, `*.tmp`, `*.ffs_db`, `*.ffs_lock`, `*.coworksync.tmp` are always excluded regardless of folder rules.
 - **FAT32 tolerance:** 2-second mtime comparison tolerance for cross-filesystem compatibility.
 - **No external database:** Simple JSON files for all persistent state.
 - **All copies go through `copy_file()`:** Uses `CopyFileExW` (not `shutil.copy2`) so minifilter drivers like Google Drive register the write. `shutil.copy2` is only the non-Windows fallback inside that function.
