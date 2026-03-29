@@ -18,7 +18,7 @@ from coworksync.logger import logger
 
 EXCLUDED_FOLDERS = {"processing"}
 EXCLUDED_FILES = {"thumbs.db", "desktop.ini", ".ds_store", "coworksync.log", "sync.ffs_db"}
-EXCLUDED_EXTENSIONS = {".tmp", ".ffs_db", ".ffs_lock"}
+EXCLUDED_EXTENSIONS = {".tmp", ".ffs_db", ".ffs_lock", ".coworksync.tmp"}
 
 MASS_DELETE_THRESHOLD = 10
 MASS_DELETE_PERCENTAGE = 0.5  # 50% of known files
@@ -55,27 +55,34 @@ def delete_path(path):
 
 
 def copy_file(src, dst):
-    """Copy a file via Win32 CopyFileExW so minifilter drivers (e.g. Google Drive)
-    register the operation. Falls back to shutil.copy2 on non-Windows."""
+    """Copy via temp file + atomic rename. Uses CopyFileExW on Windows
+    so minifilter drivers (e.g. Google Drive) register the operation."""
     os.makedirs(os.path.dirname(dst), exist_ok=True)
+    tmp_dst = dst + ".coworksync.tmp"
+
     if sys.platform == "win32":
-        logger.debug("copy_file: CopyFileExW %s -> %s", src, dst)
+        logger.debug("copy_file: CopyFileExW %s -> %s (tmp)", src, tmp_dst)
         ok = ctypes.windll.kernel32.CopyFileExW(
             ctypes.c_wchar_p(src),
-            ctypes.c_wchar_p(dst),
-            None,   # progress callback
-            None,   # callback data
-            ctypes.c_bool(False),  # cancel flag
-            0,      # flags
+            ctypes.c_wchar_p(tmp_dst),
+            None,
+            None,
+            ctypes.c_bool(False),
+            0,
         )
         if not ok:
             err = ctypes.GetLastError()
+            try:
+                os.remove(tmp_dst)
+            except OSError:
+                pass
             raise OSError(err, ctypes.FormatError(err), src)
-        logger.debug("copy_file: CopyFileExW succeeded %s", dst)
     else:
-        logger.debug("copy_file: shutil.copy2 %s -> %s", src, dst)
-        shutil.copy2(src, dst)
-        logger.debug("copy_file: shutil.copy2 succeeded %s", dst)
+        logger.debug("copy_file: shutil.copy2 %s -> %s (tmp)", src, tmp_dst)
+        shutil.copy2(src, tmp_dst)
+
+    os.replace(tmp_dst, dst)
+    logger.debug("copy_file: rename succeeded %s", dst)
 
 
 # --- Sync Engine ---
