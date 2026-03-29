@@ -47,13 +47,16 @@ There is no test suite. Testing is done manually by running the application.
 
 - **Dual sync:** Watchdog + polling for reliability across virtual file systems (Google Drive VFS).
 - **Direct deletion:** Uses `os.remove()`/`shutil.rmtree()` (never recycle bin) so cloud clients register changes.
-- **Excluded paths:** `processing/` folder, `thumbs.db`, `desktop.ini`, `.ds_store`, `*.tmp`, `*.ffs_db`, `*.ffs_lock`.
+- **Excluded paths:** `processing/` folder, `thumbs.db`, `desktop.ini`, `.ds_store`, `*.tmp`, `*.ffs_db`, `*.ffs_lock`, `*.coworksync.tmp`.
 - **FAT32 tolerance:** 2-second mtime comparison tolerance for cross-filesystem compatibility.
 - **No external database:** Simple JSON files for all persistent state.
 - **All copies go through `copy_file()`:** Uses `CopyFileExW` (not `shutil.copy2`) so minifilter drivers like Google Drive register the write. `shutil.copy2` is only the non-Windows fallback inside that function.
 - **Sync-loop suppression:** `SyncEngine._suppressed` is a `{abs_dst_path: monotonic_timestamp}` dict. Before every watchdog-triggered copy, the destination path is added to the dict. When the other watcher fires for that same path (the echo event), `_handle_event` checks `_is_suppressed(src_path)` and skips with `SKIP (suppressed)` logged. Window is 5 seconds. Entries are pruned lazily on each `_suppress()` call.
 - **Watchdog mtime guard:** `_handle_event` stats both sides before copying. If `|src_mtime - dst_mtime| ≤ 2.0s`, the copy is skipped. This catches Google Drive post-ingest timestamp touches.
 - **Immediate state update after watchdog copy:** After each `_handle_event` copy, `_update_state_for_file` writes the new mtime into `state.json` under `_lock`. This prevents the next poll cycle from seeing a mismatch and re-copying.
+- **Mass deletion threshold:** Poll-based deletions are collected into a pending list and checked against a threshold (>10 files AND >50% of known files) before execution. If triggered, status is set to `error`, the state DB is NOT updated (preserving the pre-disconnect view), and no files are deleted. "Force Sync (bypass safety)" in the tray menu bypasses the threshold for manual recovery. Watchdog deletions are NOT gated by this threshold.
+- **Atomic writes:** `save_state()` and `save_config()` write to a `.tmp` file (flushed and fsynced) then rename via `os.replace()` for crash safety. Both files are in `%APPDATA%\CoworkSync\`, always on the same volume.
+- **Atomic copy:** `copy_file()` writes to `<dst>.coworksync.tmp` then renames to the final destination via `os.replace()`. Prevents partial files from being treated as valid if the app crashes mid-copy. The `_suppress(dst_path)` call still uses the final `dst` path, not the tmp path.
 
 ## Known Issues / Active Investigation
 
