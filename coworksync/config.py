@@ -35,10 +35,14 @@ def load_config():
 
 
 def save_config(cfg):
-    """Save config to disk."""
+    """Save config to disk atomically."""
     os.makedirs(APP_DIR, exist_ok=True)
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+    tmp_path = CONFIG_FILE + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, CONFIG_FILE)
 
 
 def is_configured(cfg):
@@ -119,7 +123,11 @@ def load_state():
 
 
 def save_state(state):
-    """Save sync state to disk."""
+    """Save sync state to disk atomically."""
     os.makedirs(APP_DIR, exist_ok=True)
-    with open(STATE_FILE, "w", encoding="utf-8") as f:
+    tmp_path = STATE_FILE + ".tmp"
+    with open(tmp_path, "w", encoding="utf-8") as f:
         json.dump(state, f, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, STATE_FILE)
