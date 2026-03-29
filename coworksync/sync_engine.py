@@ -384,6 +384,9 @@ class SyncEngine:
         try:
             state = load_state()
             known_files = state.get("files", {})
+            first_run = len(known_files) == 0
+            if first_run:
+                logger.info("First run detected — all files will be copied (no deletions). State DB is empty.")
             current_files = {}
 
             source_files = self._scan_folder(self.source)
@@ -439,7 +442,7 @@ class SyncEngine:
                             current_files[rel] = local_files[rel]
 
                     elif in_src and not in_dst:
-                        if in_state:
+                        if in_state and not first_run:
                             # Was known, now gone from local → deleted locally
                             logger.debug(
                                 "DEL←S  %s  (in_state=True, missing from local → delete source)",
@@ -460,7 +463,7 @@ class SyncEngine:
                             current_files[rel] = source_files[rel]
 
                     elif not in_src and in_dst:
-                        if in_state:
+                        if in_state and not first_run:
                             # Was known, now gone from source → deleted at source
                             logger.debug(
                                 "DEL←L  %s  (in_state=True, missing from source → delete local)",
