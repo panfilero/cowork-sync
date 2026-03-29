@@ -20,6 +20,9 @@ EXCLUDED_FOLDERS = {"processing"}
 EXCLUDED_FILES = {"thumbs.db", "desktop.ini", ".ds_store", "coworksync.log", "sync.ffs_db"}
 EXCLUDED_EXTENSIONS = {".tmp", ".ffs_db", ".ffs_lock"}
 
+MASS_DELETE_THRESHOLD = 10
+MASS_DELETE_PERCENTAGE = 0.5  # 50% of known files
+
 
 def _is_excluded(rel_path):
     """Check if a relative path should be excluded from sync."""
@@ -190,6 +193,18 @@ class SyncEngine:
         self._add_activity("Manual sync", "triggered", "")
         threading.Thread(target=self._full_sync, daemon=True).start()
 
+    def force_sync(self):
+        """Run a full sync with mass deletion threshold disabled."""
+        if not self.running:
+            return
+        logger.warning("Force sync triggered — mass deletion threshold disabled.")
+        self._add_activity("Force sync", "threshold bypassed", "")
+        try:
+            self._force_sync_active = True
+            self._full_sync()
+        finally:
+            self._force_sync_active = False
+
     # --- Sync-loop suppression ---
 
     _SUPPRESS_WINDOW = 5.0  # seconds
@@ -359,6 +374,7 @@ class SyncEngine:
             local_files = self._scan_folder(self.local)
 
             all_rel_paths = set(source_files.keys()) | set(local_files.keys()) | set(known_files.keys())
+            pending_deletes = []  # list of (path_to_delete, rel_path, reason)
 
             for rel in all_rel_paths:
                 if _is_excluded(rel):
@@ -413,11 +429,7 @@ class SyncEngine:
                                 "DEL←S  %s  (in_state=True, missing from local → delete source)",
                                 rel,
                             )
-                            delete_path(src_path)
-                            logger.info("DELETE %s  (removed from local)", rel)
-                            self._add_activity("Deleted", os.path.basename(rel), "x")
-                            self._increment_files_today()
-                            actions_taken += 1
+                            pending_deletes.append((src_path, rel, "removed from local"))
                         else:
                             # New in source → copy to local
                             logger.debug(
@@ -438,11 +450,7 @@ class SyncEngine:
                                 "DEL←L  %s  (in_state=True, missing from source → delete local)",
                                 rel,
                             )
-                            delete_path(dst_path)
-                            logger.info("DELETE %s  (removed from source)", rel)
-                            self._add_activity("Deleted", os.path.basename(rel), "x")
-                            self._increment_files_today()
-                            actions_taken += 1
+                            pending_deletes.append((dst_path, rel, "removed from source"))
                         else:
                             # New in local → copy to source
                             logger.debug(
@@ -459,6 +467,38 @@ class SyncEngine:
                     # else: not in src, not in dst — already gone, clean up state
                 except Exception as e:
                     logger.error("SYNC   %s  error: %s", rel, e)
+                    self._add_activity("Error", os.path.basename(rel), str(e))
+
+            # Check mass deletion threshold before executing any deletes
+            if pending_deletes and not getattr(self, '_force_sync_active', False):
+                num_deletes = len(pending_deletes)
+                num_known = len(known_files)
+                if num_known > 0 and num_deletes > MASS_DELETE_THRESHOLD and num_deletes > num_known * MASS_DELETE_PERCENTAGE:
+                    logger.error(
+                        "Mass deletion blocked: %d files would be deleted out of %d known "
+                        "(threshold: %d / %.0f%%). Possible VFS disconnect.",
+                        num_deletes, num_known, MASS_DELETE_THRESHOLD, MASS_DELETE_PERCENTAGE * 100,
+                    )
+                    self.status = "error"
+                    self.error_message = (
+                        f"Mass deletion blocked: {num_deletes} files would be deleted. "
+                        "Check your cloud drive connection."
+                    )
+                    self._add_activity("Mass delete blocked", f"{num_deletes} files", "")
+                    # Do NOT update state DB — preserve pre-disconnect state
+                    self.syncing = False
+                    return
+
+            # Safe to execute deletions
+            for path_to_delete, rel, reason in pending_deletes:
+                try:
+                    delete_path(path_to_delete)
+                    logger.info("DELETE %s  (%s)", rel, reason)
+                    self._add_activity("Deleted", os.path.basename(rel), "x")
+                    self._increment_files_today()
+                    actions_taken += 1
+                except Exception as e:
+                    logger.error("DELETE %s  error: %s", rel, e)
                     self._add_activity("Error", os.path.basename(rel), str(e))
 
             # Save state

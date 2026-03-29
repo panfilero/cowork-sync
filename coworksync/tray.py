@@ -45,6 +45,11 @@ class TrayApp:
         return pystray.Menu(
             pystray.MenuItem("Status", self._on_status),
             pystray.MenuItem("Sync Now", self._on_sync_now, enabled=self.engine.running),
+            pystray.MenuItem(
+                "Force Sync (bypass safety)",
+                self._on_force_sync,
+                enabled=self.engine.status == "error",
+            ),
             pystray.MenuItem("Open Config", self._on_open_config),
             pystray.MenuItem("View Log", self._on_view_log),
             pystray.MenuItem(pause_label, self._on_pause_resume),
@@ -62,6 +67,9 @@ class TrayApp:
 
     def _on_sync_now(self, icon, item):
         self.engine.sync_now()
+
+    def _on_force_sync(self, icon, item):
+        threading.Thread(target=self.engine.force_sync, daemon=True).start()
 
     def _on_open_config(self, icon, item):
         ui.open_window_threaded()
