@@ -94,6 +94,7 @@ class SyncEngine:
         self._files_today_date = None
         self._lock = threading.Lock()
         self._debounce_timers = {}
+        self._suppressed = {}  # {abs_dst_path: monotonic_timestamp} — echo-event suppression
         self._stop_event = threading.Event()
         self.status = "stopped"  # stopped | running | syncing | error
         self.error_message = ""
@@ -176,6 +177,7 @@ class SyncEngine:
         for timer in self._debounce_timers.values():
             timer.cancel()
         self._debounce_timers.clear()
+        self._suppressed.clear()
         self.status = "stopped"
         self.next_poll = None
         logger.info("Sync engine stopped.")
@@ -187,6 +189,52 @@ class SyncEngine:
         logger.info("Manual sync triggered.")
         self._add_activity("Manual sync", "triggered", "")
         threading.Thread(target=self._full_sync, daemon=True).start()
+
+    # --- Sync-loop suppression ---
+
+    _SUPPRESS_WINDOW = 5.0  # seconds
+
+    def _suppress(self, dst_path):
+        """Record that we just wrote dst_path so the echo watchdog event is ignored."""
+        with self._lock:
+            now = time.monotonic()
+            # Prune entries older than 2× the window to keep the dict bounded
+            expired = [p for p, ts in self._suppressed.items()
+                       if now - ts > self._SUPPRESS_WINDOW * 2]
+            for p in expired:
+                del self._suppressed[p]
+            self._suppressed[dst_path] = now
+
+    def _is_suppressed(self, path):
+        """Return True (and log) if this path is within the suppression window."""
+        with self._lock:
+            ts = self._suppressed.get(path)
+            if ts is None:
+                return False
+            age = time.monotonic() - ts
+            if age <= self._SUPPRESS_WINDOW:
+                return True
+            # Expired — remove it
+            del self._suppressed[path]
+            return False
+
+    def _update_state_for_file(self, rel_path, written_path):
+        """Immediately persist one file's mtime/size into the state DB.
+
+        Called after every watchdog-triggered copy so the next poll cycle sees
+        matching mtimes and does not re-copy the same file.
+        """
+        try:
+            st = os.stat(written_path)
+            with self._lock:
+                state = load_state()
+                state.setdefault("files", {})[rel_path] = {
+                    "mtime": st.st_mtime,
+                    "size": st.st_size,
+                }
+                save_state(state)
+        except Exception as e:
+            logger.debug("State update skipped for %s: %s", rel_path, e)
 
     # --- Watchdog ---
 
@@ -226,6 +274,11 @@ class SyncEngine:
         if _is_excluded(rel_path):
             return
 
+        # Guard 1 — suppression: we wrote this file ourselves; ignore the echo event
+        if action in ("created", "modified") and self._is_suppressed(src_path):
+            logger.info("SKIP (suppressed)  %s", rel_path)
+            return
+
         try:
             if action == "deleted":
                 if os.path.exists(dst_path):
@@ -234,13 +287,34 @@ class SyncEngine:
                     self._add_activity("Deleted", os.path.basename(rel_path), "x")
                     self._increment_files_today()
             elif action in ("created", "modified"):
-                if os.path.exists(src_path):
-                    if os.path.isfile(src_path):
-                        copy_file(src_path, dst_path)
-                        logger.info("COPY   %s", rel_path)
-                        direction = "\u2192 L" if "source" in src_path else "\u2192 S"
-                        self._add_activity("Copied", os.path.basename(rel_path), direction)
-                        self._increment_files_today()
+                if os.path.exists(src_path) and os.path.isfile(src_path):
+                    # Guard 2 — mtime tolerance: skip if both sides are already in sync
+                    if os.path.exists(dst_path):
+                        try:
+                            src_mtime = os.stat(src_path).st_mtime
+                            dst_mtime = os.stat(dst_path).st_mtime
+                            if abs(src_mtime - dst_mtime) <= 2.0:
+                                logger.debug(
+                                    "SKIP   %s  (watchdog mtime equal:"
+                                    " src=%.3f dst=%.3f diff=%.3f)",
+                                    rel_path, src_mtime, dst_mtime,
+                                    src_mtime - dst_mtime,
+                                )
+                                return
+                        except OSError:
+                            pass  # stat failed — proceed with copy
+
+                    # Guard 3 — add dst to suppression BEFORE writing so the
+                    # echo event is already covered when the OS notifies the
+                    # other watcher (which can fire before copy_file returns).
+                    self._suppress(dst_path)
+                    copy_file(src_path, dst_path)
+                    logger.info("COPY   %s", rel_path)
+                    direction = "\u2192 L" if "source" in src_path else "\u2192 S"
+                    self._add_activity("Copied", os.path.basename(rel_path), direction)
+                    self._increment_files_today()
+                    # Update state immediately so the next poll sees matching mtimes
+                    self._update_state_for_file(rel_path, dst_path)
         except Exception as e:
             logger.error("EVENT  %s error: %s", rel_path, e)
             self._add_activity("Error", os.path.basename(rel_path), str(e))
