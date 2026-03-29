@@ -23,6 +23,15 @@ EXCLUDED_EXTENSIONS = {".tmp", ".ffs_db", ".ffs_lock", ".coworksync.tmp"}
 MASS_DELETE_THRESHOLD = 10
 MASS_DELETE_PERCENTAGE = 0.5  # 50% of known files
 
+FAT32_TOLERANCE = 2.0
+DST_TOLERANCE = 3600.0
+
+
+def _mtimes_equal(mtime_a, mtime_b):
+    """Check if two mtimes are effectively equal (FAT32 + DST tolerance)."""
+    diff = abs(mtime_a - mtime_b)
+    return diff <= FAT32_TOLERANCE or abs(diff - DST_TOLERANCE) <= FAT32_TOLERANCE
+
 
 def _is_excluded(rel_path):
     """Check if a relative path should be excluded from sync."""
@@ -315,9 +324,9 @@ class SyncEngine:
                         try:
                             src_mtime = os.stat(src_path).st_mtime
                             dst_mtime = os.stat(dst_path).st_mtime
-                            if abs(src_mtime - dst_mtime) <= 2.0:
+                            if _mtimes_equal(src_mtime, dst_mtime):
                                 logger.debug(
-                                    "SKIP   %s  (watchdog mtime equal:"
+                                    "SKIP   %s  (watchdog mtime equal via _mtimes_equal:"
                                     " src=%.3f dst=%.3f diff=%.3f)",
                                     rel_path, src_mtime, dst_mtime,
                                     src_mtime - dst_mtime,
@@ -399,10 +408,10 @@ class SyncEngine:
                         src_mtime = source_files[rel]["mtime"]
                         dst_mtime = local_files[rel]["mtime"]
                         diff = src_mtime - dst_mtime
-                        if abs(diff) <= 2.0:
-                            # Within FAT32 tolerance, treat as equal
+                        if _mtimes_equal(src_mtime, dst_mtime):
+                            # Within FAT32 or DST tolerance, treat as equal
                             logger.debug(
-                                "SKIP   %s  (mtime equal: src=%.3f dst=%.3f diff=%.3f)",
+                                "SKIP   %s  (mtime equal via _mtimes_equal: src=%.3f dst=%.3f diff=%.3f)",
                                 rel, src_mtime, dst_mtime, diff,
                             )
                             current_files[rel] = source_files[rel]
