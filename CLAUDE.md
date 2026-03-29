@@ -57,6 +57,8 @@ There is no test suite. Testing is done manually by running the application.
 - **Mass deletion threshold:** Poll-based deletions are collected into a pending list and checked against a threshold (>10 files AND >50% of known files) before execution. If triggered, status is set to `error`, the state DB is NOT updated (preserving the pre-disconnect view), and no files are deleted. "Force Sync (bypass safety)" in the tray menu bypasses the threshold for manual recovery. Watchdog deletions are NOT gated by this threshold.
 - **Atomic writes:** `save_state()` and `save_config()` write to a `.tmp` file (flushed and fsynced) then rename via `os.replace()` for crash safety. Both files are in `%APPDATA%\CoworkSync\`, always on the same volume.
 - **Atomic copy:** `copy_file()` writes to `<dst>.coworksync.tmp` then renames to the final destination via `os.replace()`. Prevents partial files from being treated as valid if the app crashes mid-copy. The `_suppress(dst_path)` call still uses the final `dst` path, not the tmp path.
+- **DST mtime tolerance:** `_mtimes_equal()` treats files as identical if their mtime diff is within 2s (FAT32) or within 2s of exactly 3600s (DST shift). Used in both watchdog and poll comparisons.
+- **First-run conservative mode:** When the state DB is empty, all files are copied and no deletions are performed, regardless of which side a file exists on.
 
 ## Known Issues / Active Investigation
 
