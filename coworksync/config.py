@@ -81,7 +81,7 @@ def set_startup(enabled, exe_path=None):
             if exe_path is None:
                 import sys
                 exe_path = sys.executable
-            winreg.SetValueEx(key, REGISTRY_VALUE, 0, winreg.REG_SZ, exe_path)
+            winreg.SetValueEx(key, REGISTRY_VALUE, 0, winreg.REG_SZ, f'"{exe_path}" --silent')
         else:
             try:
                 winreg.DeleteValue(key, REGISTRY_VALUE)

@@ -38,8 +38,12 @@ def main():
     if is_configured(cfg):
         engine.configure(cfg)
         engine.start()
-    else:
+
+    if not is_configured(cfg):
         logger.info("No config found — open the tray menu to configure.")
+        ui.open_window_threaded()
+    elif "--silent" not in sys.argv:
+        # Manual launch — show the UI
         ui.open_window_threaded()
 
     # Run system tray (blocking — runs the Windows message loop)

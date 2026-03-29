@@ -23,6 +23,9 @@ python coworksync/main.py
 
 # Run with debug-level logging (every mtime comparison, copy call, suppression hit)
 python coworksync/main.py --verbose
+
+# Run silently (used by Windows auto-start, no UI on launch)
+python coworksync/main.py --silent
 ```
 
 There is no test suite. Testing is done manually by running the application.

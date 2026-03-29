@@ -62,14 +62,14 @@ class ConfigWindow(customtkinter.CTk):
         config_frame = customtkinter.CTkFrame(self)
         config_frame.pack(fill="x", padx=15, pady=(15, 5))
 
-        customtkinter.CTkLabel(config_frame, text="Source Folder").pack(anchor="w", padx=10, pady=(10, 0))
+        customtkinter.CTkLabel(config_frame, text="Cloud Folder").pack(anchor="w", padx=10, pady=(10, 0))
         source_row = customtkinter.CTkFrame(config_frame, fg_color="transparent")
         source_row.pack(fill="x", padx=10, pady=(2, 5))
         self.source_entry = customtkinter.CTkEntry(source_row, width=290)
         self.source_entry.pack(side="left", fill="x", expand=True)
         customtkinter.CTkButton(source_row, text="Browse", width=70, command=self._browse_source).pack(side="right", padx=(5, 0))
 
-        customtkinter.CTkLabel(config_frame, text="Local Folder").pack(anchor="w", padx=10, pady=(5, 0))
+        customtkinter.CTkLabel(config_frame, text="Claude Cowork Folder").pack(anchor="w", padx=10, pady=(5, 0))
         local_row = customtkinter.CTkFrame(config_frame, fg_color="transparent")
         local_row.pack(fill="x", padx=10, pady=(2, 5))
         self.local_entry = customtkinter.CTkEntry(local_row, width=290)
@@ -142,14 +142,14 @@ class ConfigWindow(customtkinter.CTk):
         self.startup_var.set(get_startup_enabled())
 
     def _browse_source(self):
-        path = filedialog.askdirectory(title="Select Source Folder")
+        path = filedialog.askdirectory(title="Select Cloud Folder")
         if path:
             self.source_entry.delete(0, "end")
             self.source_entry.insert(0, path)
             self._on_path_changed()
 
     def _browse_local(self):
-        path = filedialog.askdirectory(title="Select Local Folder")
+        path = filedialog.askdirectory(title="Select Claude Cowork Folder")
         if path:
             self.local_entry.delete(0, "end")
             self.local_entry.insert(0, path)
