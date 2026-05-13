@@ -1,5 +1,6 @@
 """CustomTkinter config window for CoworkSync."""
 
+import os
 import sys
 import threading
 from datetime import datetime
@@ -92,7 +93,17 @@ class ConfigWindow(customtkinter.CTk):
 
         self.startup_var = customtkinter.BooleanVar()
         self.startup_check = customtkinter.CTkCheckBox(config_frame, text="Start with Windows", variable=self.startup_var)
-        self.startup_check.pack(anchor="w", padx=10, pady=(5, 10))
+        self.startup_check.pack(anchor="w", padx=10, pady=(5, 5))
+
+        customtkinter.CTkLabel(config_frame, text="Default Sync Mode").pack(anchor="w", padx=10, pady=(5, 0))
+        self.default_mode_var = customtkinter.StringVar(value="two-way")
+        self.default_mode_menu = customtkinter.CTkOptionMenu(
+            config_frame,
+            variable=self.default_mode_var,
+            values=["two-way", "source-to-local", "local-to-source"],
+            width=200,
+        )
+        self.default_mode_menu.pack(anchor="w", padx=10, pady=(2, 10))
 
         # --- Folder Rules ---
         rules_frame = customtkinter.CTkFrame(self._main_scroll)
@@ -136,7 +147,7 @@ class ConfigWindow(customtkinter.CTk):
         btn_frame = customtkinter.CTkFrame(self._main_scroll, fg_color="transparent")
         btn_frame.pack(fill="x", padx=15, pady=5)
 
-        self.save_btn = customtkinter.CTkButton(btn_frame, text="Save", command=self._on_save)
+        self.save_btn = customtkinter.CTkButton(btn_frame, text="Save & Start", command=self._on_save)
         self.save_btn.pack(side="left", expand=True, padx=(0, 5))
 
         self.toggle_btn = customtkinter.CTkButton(btn_frame, text="Stop", command=self._on_toggle)
@@ -166,6 +177,7 @@ class ConfigWindow(customtkinter.CTk):
         self.local_entry.insert(0, self._saved_local)
         self.interval_entry.insert(0, str(cfg.get("sync_interval", 5)))
         self.startup_var.set(get_startup_enabled())
+        self.default_mode_var.set(cfg.get("default_mode", "two-way"))
 
         # Load folder rules
         rules = cfg.get("folder_rules", [{"path": "processing", "mode": "ignore"}])
@@ -277,8 +289,8 @@ class ConfigWindow(customtkinter.CTk):
         self._update_status_display()
 
     def _on_save(self):
-        source = self.source_entry.get().strip()
-        local = self.local_entry.get().strip()
+        source = os.path.normpath(self.source_entry.get().strip()) if self.source_entry.get().strip() else ""
+        local = os.path.normpath(self.local_entry.get().strip()) if self.local_entry.get().strip() else ""
 
         err = validate_source(source)
         if err:
@@ -300,6 +312,7 @@ class ConfigWindow(customtkinter.CTk):
             "local_folder": local,
             "sync_interval": interval,
             "start_with_windows": self.startup_var.get(),
+            "default_mode": self.default_mode_var.get(),
             "folder_rules": self._get_folder_rules(),
         }
         save_config(cfg)
@@ -312,12 +325,14 @@ class ConfigWindow(customtkinter.CTk):
 
         if _engine:
             _engine.configure(cfg)
+            _engine.start()
 
         warning = warn_local(local)
         if warning:
             self.message_label.configure(text=warning, text_color="orange")
         else:
-            self.message_label.configure(text="Config saved.", text_color="green")
+            self.message_label.configure(text="Saved. Sync started.", text_color="green")
+        self._update_status_display()
 
     def _on_toggle(self):
         if not _engine:
@@ -331,6 +346,7 @@ class ConfigWindow(customtkinter.CTk):
     def _on_sync_now(self):
         if _engine:
             _engine.sync_now()
+        self.message_label.configure(text="Syncing...", text_color="green")
         self._update_status_display()
 
     def _refresh_status(self):

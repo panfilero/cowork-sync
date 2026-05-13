@@ -16,6 +16,7 @@ DEFAULT_CONFIG = {
     "local_folder": "",
     "sync_interval": 5,
     "start_with_windows": True,
+    "default_mode": "two-way",
     "folder_rules": [{"path": "processing", "mode": "ignore"}],
 }
 
@@ -55,6 +56,7 @@ def validate_source(path):
     """Validate source folder exists."""
     if not path:
         return "Source folder is required."
+    path = os.path.normpath(path)
     if not os.path.isdir(path):
         return "Source folder does not exist."
     return None
@@ -64,6 +66,7 @@ def validate_local(path):
     """Validate local folder exists. Warn if outside C:\\Users\\."""
     if not path:
         return "Local folder is required."
+    path = os.path.normpath(path)
     if not os.path.isdir(path):
         return "Local folder does not exist."
     return None
@@ -71,6 +74,8 @@ def validate_local(path):
 
 def warn_local(path):
     """Return warning if path is outside user directory."""
+    if path:
+        path = os.path.normpath(path)
     if path and not path.lower().startswith("c:\\users\\"):
         return "Warning: path is outside C:\\Users\\ — Cowork may not be able to access it."
     return None

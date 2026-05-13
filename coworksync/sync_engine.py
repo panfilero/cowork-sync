@@ -17,7 +17,7 @@ from coworksync.logger import logger
 # --- Exclusions ---
 
 EXCLUDED_FILES = {"thumbs.db", "desktop.ini", ".ds_store", "coworksync.log", "sync.ffs_db"}
-EXCLUDED_EXTENSIONS = {".tmp", ".ffs_db", ".ffs_lock", ".coworksync.tmp"}
+EXCLUDED_EXTENSIONS = {".tmp", ".ffs_db", ".ffs_lock", ".coworksync.tmp", ".gsheet", ".gdoc", ".gslides", ".gdraw", ".gform", ".gjam", ".gmap", ".gsite"}
 
 MASS_DELETE_THRESHOLD = 10
 MASS_DELETE_PERCENTAGE = 0.5  # 50% of known files
@@ -111,6 +111,7 @@ class SyncEngine:
         self._suppressed = {}  # {abs_dst_path: monotonic_timestamp} \u2014 echo-event suppression
         self._stop_event = threading.Event()
         self._folder_rules = [{"path": "processing", "mode": "ignore"}]
+        self._default_mode = "two-way"
         self.status = "stopped"  # stopped | running | syncing | error
         self.error_message = ""
         self.recent_activity = []  # list of dicts: {time, action, file, direction}
@@ -135,9 +136,9 @@ class SyncEngine:
 
     def get_mode(self, rel_path):
         """Return the sync mode for a given relative path.
-        Matches the deepest (most specific) rule. Default: two-way."""
+        Matches the deepest (most specific) rule. Falls back to default_mode."""
         rel_normalized = rel_path.replace("\\", "/").lower().rstrip("/")
-        best_match = ("", "two-way")
+        best_match = ("", self._default_mode)
         for rule in self._folder_rules:
             prefix = rule["path"].replace("\\", "/").lower().rstrip("/")
             if rel_normalized == prefix or rel_normalized.startswith(prefix + "/"):
@@ -150,6 +151,7 @@ class SyncEngine:
         self.source = cfg.get("source_folder", "")
         self.local = cfg.get("local_folder", "")
         self._folder_rules = cfg.get("folder_rules", [{"path": "processing", "mode": "ignore"}])
+        self._default_mode = cfg.get("default_mode", "two-way")
         new_interval = cfg.get("sync_interval", 5)
         interval_changed = new_interval != self.interval
         self.interval = new_interval
